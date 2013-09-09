@@ -19,7 +19,7 @@ module Kaminari
         # a workaround to count the actual model instances on distinct query because count + distinct returns wrong value in some cases. see https://github.com/amatsuda/kaminari/pull/160
         uses_distinct_sql_statement = c.to_sql =~ /DISTINCT/i
         if uses_distinct_sql_statement
-          c.length
+          ActiveRecord::Base.connection.select_one('select count(*) as c from (' + c.to_sql + ') q')['c']
         else
           # .group returns an OrderdHash that responds to #count
           c = c.count
