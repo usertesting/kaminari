@@ -1,17 +1,33 @@
 require 'spec_helper'
 
 if defined? DataMapper
-  describe Kaminari::DataMapperExtension do
+  # tests for issue #203
+  describe Kaminari::DataMapperCollectionMethods do
     before do
-      100.times do |i|
+      30.times do |i|
         User.create(:name => "User#{i}", :age => i)
       end
+    end
 
-      worker0 = User[0]
-      50.times do |i|
-        worker0.projects << Project.create(:name => "Project#{i}")
+    describe 'Model' do
+      subject { User }
+      it { User.all.count.should == 30 }
+      it { User.page(1).length.should == 25 }
+      it {
+        User.paginates_per(5)
+        User.page(1).length.should == 5
+        User.all.page(1).length.should == 5
+        User.paginates_per(nil) # reset to default
+      }
+    end
+
+  end
+
+  describe Kaminari::DataMapperExtension do
+    before do
+      90.times do |i|
+        User.create(:name => "User#{i}", :age => i)
       end
-      worker0.projects.save
     end
 
     describe 'Collection' do
@@ -32,6 +48,8 @@ if defined? DataMapper
         subject { User.all(:age.gte => 60).page 0 }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 1 }
+        its(:prev_page) { should be_nil }
+        its(:next_page) { should == 2 }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 0 }
         its(:total_count) { should == User.count(:age.gte => 60) }
@@ -42,9 +60,11 @@ if defined? DataMapper
         subject { User.all(:age.gte => 0).page 1 }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 1 }
+        its(:prev_page) { should be_nil }
+        its(:next_page) { should == 2 }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 0 }
-        its(:total_count) { should == 100 }
+        its(:total_count) { should == 90 }
         its(:total_pages) { should == 4 }
       end
 
@@ -52,10 +72,12 @@ if defined? DataMapper
         subject { User.page 2 }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 2 }
+        its(:prev_page) { should == 1 }
+        its(:next_page) { should == 3 }
         its(:limit_value) { should == 25 }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 25 }
-        its(:total_count) { should == 100 }
+        its(:total_count) { should == 90 }
         its(:total_pages) { should == 4 }
       end
 
@@ -63,9 +85,11 @@ if defined? DataMapper
         subject { User.page 'foobar' }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 1 }
+        its(:prev_page) { should be_nil }
+        its(:next_page) { should == 2 }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 0 }
-        its(:total_count) { should == 100 }
+        its(:total_count) { should == 90 }
         its(:total_pages) { should == 4 }
       end
 
@@ -73,6 +97,8 @@ if defined? DataMapper
         subject { User.all(:age.gt => 60).page 2 }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 2 }
+        its(:prev_page) { should == 1 }
+        its(:next_page) { should be_nil }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 25 }
         its(:total_count) { should == User.count(:age.gt => 60) }
@@ -83,6 +109,8 @@ if defined? DataMapper
         subject { User.page(2).all(:age.gt => 60) }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 2 }
+        its(:prev_page) { should == 1 }
+        its(:next_page) { should be_nil }
         its('query.limit') { should == 25 }
         its('query.offset') { should == 25 }
         its(:total_count) { should == User.count(:age.gt => 60) }
@@ -95,16 +123,20 @@ if defined? DataMapper
         subject { User.page(2).per(20) }
         it { should be_a DataMapper::Collection }
         its(:current_page) { should == 2 }
+        its(:prev_page) { should == 1 }
+        its(:next_page) { should == 3 }
         its('query.limit') { should == 20 }
         its(:limit_value) { should == 20 }
         its('query.offset') { should == 20 }
-        its(:total_count) { should == 100 }
+        its(:total_count) { should == 90 }
         its(:total_pages) { should == 5 }
       end
 
       context 'on query with condition' do
         subject { User.page(5).all(:age.lte => 80).per(13) }
         its(:current_page) { should == 5 }
+        its(:prev_page) { should == 4 }
+        its(:next_page) { should == 6 }
         its('query.limit') { should == 13 }
         its('query.offset') { should == 52 }
         its(:total_count) { should == 81 }
@@ -118,6 +150,8 @@ if defined? DataMapper
         it('includes user with age 52') { should include(User.first(:age => 64)) }
         it('does not include user with age 51') { should_not include(User.first(:age => 65)) }
         its(:current_page) { should == 5 }
+        its(:prev_page) { should == 4 }
+        its(:next_page) { should == 6 }
         its('query.limit') { should == 13 }
         its('query.offset') { should == 52 }
         its(:total_count) { should == 81 }
@@ -127,28 +161,44 @@ if defined? DataMapper
       context 'on chained queries' do
         subject { User.all(:age.gte => 50).page(3).all(:age.lte => 80).per(13) }
         its(:current_page) { should == 3 }
+        its(:prev_page) { should == 2 }
+        its(:next_page) { should be_nil }
         its('query.limit') { should == 13 }
         its('query.offset') { should == 26 }
         its(:total_count) { should == 31 }
         its(:total_pages) { should == 3 }
       end
 
-      context 'on query on association' do
-        subject { User[0].projects.page(3).all(:name.like => 'Project%').per(5) }
-        its(:current_page) { should == 3 }
-        its('query.limit') { should == 5 }
-        its('query.offset') { should == 10 }
-        its(:total_count) { should == 50 }
-        its(:total_pages) { should == 10 }
-      end
+      context 'for association' do
+        before do
+          worker0 = User[0]
+          30.times do |i|
+            worker0.projects << Project.create(:name => "Project#{i}")
+          end
+          worker0.projects.save
+        end
 
-      context 'on query with association conditions' do
-        subject { User.page(3).all(:projects => Project.all).per(5) }
-        its(:current_page) { should == 3 }
-        its('query.limit') { should == 5 }
-        its('query.offset') { should == 10 }
-        its(:total_count) { should == 50 }
-        its(:total_pages) { should == 10 }
+        context 'on query' do
+          subject { User[0].projects.page(3).all(:name.like => 'Project%').per(5) }
+          its(:current_page) { should == 3 }
+          its(:prev_page) { should == 2 }
+          its(:next_page) { should == 4 }
+          its('query.limit') { should == 5 }
+          its('query.offset') { should == 10 }
+          its(:total_count) { should == 30 }
+          its(:total_pages) { should == 6 }
+        end
+
+        context 'after association conditions' do
+          subject { User.page(3).all(:projects => Project.all).per(5) }
+          its(:current_page) { should == 3 }
+          its(:prev_page) { should == 2 }
+          its(:next_page) { should == 4 }
+          its('query.limit') { should == 5 }
+          its('query.offset') { should == 10 }
+          its(:total_count) { should == 30 }
+          its(:total_pages) { should == 6 }
+        end
       end
     end
   end

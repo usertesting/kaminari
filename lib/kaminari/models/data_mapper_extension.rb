@@ -5,8 +5,10 @@ module Kaminari
     module Paginatable
       class_eval <<-RUBY, __FILE__, __LINE__ + 1
         def #{Kaminari.config.page_method_name}(num = 1)
+          model = self
+          model = self.model if self.is_a? DataMapper::Collection
           num = [num.to_i, 1].max - 1
-          all(:limit => default_per_page, :offset => default_per_page * num).extend Paginating
+          all(:limit => model.default_per_page, :offset => model.default_per_page * num).extend Paginating
         end
       RUBY
     end
@@ -26,9 +28,10 @@ module Kaminari
     module Collection
       extend ActiveSupport::Concern
       included do
-        include Kaminari::ConfigurationMethods::ClassMethods
         include Kaminari::DataMapperCollectionMethods
         include Paginatable
+
+        delegate :default_per_page, :max_per_page, :max_pages, :to => :model
       end
     end
 

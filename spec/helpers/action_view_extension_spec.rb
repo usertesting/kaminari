@@ -6,6 +6,7 @@ describe 'Kaminari::ActionViewExtension' do
       50.times {|i| User.create! :name => "user#{i}"}
       @users = User.page(1)
     end
+
     subject { helper.paginate @users, :params => {:controller => 'users', :action => 'index'} }
     it { should be_a String }
 
@@ -20,24 +21,29 @@ describe 'Kaminari::ActionViewExtension' do
     before do
       50.times {|i| User.create! :name => "user#{i}"}
     end
+
     context 'having previous pages' do
       before do
         @users = User.page(50)
       end
+
       context 'the default behaviour' do
         subject { helper.link_to_previous_page @users, 'Previous', :params => {:controller => 'users', :action => 'index'} }
         it { should be_a String }
         it { should match(/rel="previous"/) }
       end
+
       context 'overriding rel=' do
         subject { helper.link_to_previous_page @users, 'Previous', :rel => 'external', :params => {:controller => 'users', :action => 'index'} }
         it { should match(/rel="external"/) }
       end
     end
+
     context 'the first page' do
       before do
         @users = User.page(1)
       end
+
       subject { helper.link_to_previous_page @users, 'Previous', :params => {:controller => 'users', :action => 'index'} }
       it { should_not be }
     end
@@ -47,24 +53,29 @@ describe 'Kaminari::ActionViewExtension' do
     before do
       50.times {|i| User.create! :name => "user#{i}"}
     end
+
     context 'having more page' do
       before do
         @users = User.page(1)
       end
+
       context 'the default behaviour' do
         subject { helper.link_to_next_page @users, 'More', :params => {:controller => 'users', :action => 'index'} }
         it { should be_a String }
         it { should match(/rel="next"/) }
       end
+
       context 'overriding rel=' do
         subject { helper.link_to_next_page @users, 'More', :rel => 'external', :params => {:controller => 'users', :action => 'index'} }
         it { should match(/rel="external"/) }
       end
     end
+
     context 'the last page' do
       before do
         @users = User.page(2)
       end
+
       subject { helper.link_to_next_page @users, 'More', :params => {:controller => 'users', :action => 'index'} }
       it { should_not be }
     end
@@ -75,9 +86,10 @@ describe 'Kaminari::ActionViewExtension' do
       before do
         @users = User.page(1).per(25)
       end
+
       context 'having no entries' do
         subject { helper.page_entries_info @users, :params => {:controller => 'users', :action => 'index'} }
-        it      { should == 'No entries found' }
+        it      { should == 'No users found' }
 
         context 'setting the entry name option to "member"' do
           subject { helper.page_entries_info @users, :entry_name => 'member', :params => {:controller => 'users', :action => 'index'} }
@@ -90,6 +102,7 @@ describe 'Kaminari::ActionViewExtension' do
           User.create! :name => 'user1'
           @users = User.page(1).per(25)
         end
+
         subject { helper.page_entries_info @users, :params => {:controller => 'users', :action => 'index'} }
         it      { should == 'Displaying <b>1</b> user' }
 
@@ -104,6 +117,7 @@ describe 'Kaminari::ActionViewExtension' do
           10.times {|i| User.create! :name => "user#{i}"}
           @users = User.page(1).per(25)
         end
+
         subject { helper.page_entries_info @users, :params => {:controller => 'users', :action => 'index'} }
         it      { should == 'Displaying <b>all 10</b> users' }
 
@@ -122,6 +136,7 @@ describe 'Kaminari::ActionViewExtension' do
           before do
             @users = User.page(1).per(25)
           end
+
           subject { helper.page_entries_info @users, :params => {:controller => 'users', :action => 'index'} }
           it      { should == 'Displaying users <b>1&nbsp;-&nbsp;25</b> of <b>50</b> in total' }
 
@@ -135,6 +150,7 @@ describe 'Kaminari::ActionViewExtension' do
           before do
             @users = User.page(2).per(25)
           end
+
           subject { helper.page_entries_info @users, :params => {:controller => 'users', :action => 'index'} }
           it      { should == 'Displaying users <b>26&nbsp;-&nbsp;50</b> of <b>50</b> in total' }
 
@@ -149,9 +165,10 @@ describe 'Kaminari::ActionViewExtension' do
       before do
         @addresses = User::Address.page(1).per(25)
       end
+
       context 'having no entries' do
         subject { helper.page_entries_info @addresses, :params => {:controller => 'addresses', :action => 'index'} }
-        it      { should == 'No entries found' }
+        it      { should == 'No addresses found' }
       end
 
       context 'having 1 entry' do
@@ -159,6 +176,7 @@ describe 'Kaminari::ActionViewExtension' do
           User::Address.create!
           @addresses = User::Address.page(1).per(25)
         end
+
         subject { helper.page_entries_info @addresses, :params => {:controller => 'addresses', :action => 'index'} }
         it      { should == 'Displaying <b>1</b> address' }
 
@@ -173,6 +191,7 @@ describe 'Kaminari::ActionViewExtension' do
           10.times {|i| User::Address.create!}
           @addresses = User::Address.page(1).per(25)
         end
+
         subject { helper.page_entries_info @addresses, :params => {:controller => 'addresses', :action => 'index'} }
         it      { should == 'Displaying <b>all 10</b> addresses' }
 
@@ -191,6 +210,7 @@ describe 'Kaminari::ActionViewExtension' do
           before do
             @addresses = User::Address.page(1).per(25)
           end
+
           subject { helper.page_entries_info @addresses, :params => {:controller => 'addresses', :action => 'index'} }
           it      { should == 'Displaying addresses <b>1&nbsp;-&nbsp;25</b> of <b>50</b> in total' }
 
@@ -204,6 +224,7 @@ describe 'Kaminari::ActionViewExtension' do
           before do
             @addresses = User::Address.page(2).per(25)
           end
+
           subject { helper.page_entries_info @addresses, :params => {:controller => 'addresses', :action => 'index'} }
           it      { should == 'Displaying addresses <b>26&nbsp;-&nbsp;50</b> of <b>50</b> in total' }
 
@@ -219,6 +240,7 @@ describe 'Kaminari::ActionViewExtension' do
       before do
         @numbers = Kaminari.paginate_array(%w{one two three}).page(1)
       end
+
       subject { helper.page_entries_info @numbers }
       it      { should == 'Displaying <b>all 3</b> entries' }
     end
@@ -226,37 +248,41 @@ describe 'Kaminari::ActionViewExtension' do
 
   describe '#rel_next_prev_link_tags' do
     before do
-      75.times {|i| User.create! :name => "user#{i}"}
+      80.times {|i| User.create! :name => "user#{i}"}
     end
+
     context 'the first page' do
       before do
         @users = User.page(1).per(25)
       end
 
       subject { helper.rel_next_prev_link_tags @users, :params => {:controller => 'users', :action => 'index'} }
-      it { should be_a String }
-      it { should match(/rel="next"/) }
       it { should_not match(/rel="prev"/) }
-    end
-    context 'the middle page' do
-      before do
-        @users = User.page(2).per(25)
-      end
-
-      subject { helper.rel_next_prev_link_tags @users, :params => {:controller => 'users', :action => 'index'} }
-      it { should be_a String }
       it { should match(/rel="next"/) }
-      it { should match(/rel="prev"/) }
+      it { should match(/\?page=2/) }
     end
-    context 'the last page' do
+
+    context 'the middle page' do
       before do
         @users = User.page(3).per(25)
       end
 
       subject { helper.rel_next_prev_link_tags @users, :params => {:controller => 'users', :action => 'index'} }
-      it { should be_a String }
-      it { should_not match(/rel="next"/) }
       it { should match(/rel="prev"/) }
+      it { should match(/\?page=2/) }
+      it { should match(/rel="next"/) }
+      it { should match(/\?page=4/) }
+    end
+
+    context 'the last page' do
+      before do
+        @users = User.page(4).per(25)
+      end
+
+      subject { helper.rel_next_prev_link_tags @users, :params => {:controller => 'users', :action => 'index'} }
+      it { should match(/rel="prev"/) }
+      it { should match(/\?page=3"/) }
+      it { should_not match(/rel="next"/) }
     end
   end
 end

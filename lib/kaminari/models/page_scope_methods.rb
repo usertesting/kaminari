@@ -13,22 +13,46 @@ module Kaminari
     end
 
     def padding(num)
+      @_padding = num
       offset(offset_value + num.to_i)
     end
 
     # Total number of pages
     def total_pages
-      (total_count.to_f / limit_value).ceil
+      count_without_padding = total_count
+      count_without_padding -= @_padding if defined?(@_padding) && @_padding
+      count_without_padding = 0 if count_without_padding < 0
+
+      total_pages_count = (count_without_padding.to_f / limit_value).ceil
+      if max_pages.present? && max_pages < total_pages_count
+        max_pages
+      else
+        total_pages_count
+      end
     end
     #FIXME for compatibility. remove num_pages at some time in the future
     alias num_pages total_pages
 
     # Current page number
     def current_page
-      (offset_value / limit_value) + 1
+      offset_without_padding = offset_value
+      offset_without_padding -= @_padding if defined?(@_padding) && @_padding
+      offset_without_padding = 0 if offset_without_padding < 0
+
+      (offset_without_padding / limit_value) + 1
     end
 
-    # First page of the collection ?
+    # Next page number in the collection
+    def next_page
+      current_page + 1 unless last_page?
+    end
+
+    # Previous page number in the collection
+    def prev_page
+      current_page - 1 unless first_page?
+    end
+
+    # First page of the collection?
     def first_page?
       current_page == 1
     end
@@ -36,6 +60,11 @@ module Kaminari
     # Last page of the collection?
     def last_page?
       current_page >= total_pages
+    end
+
+    # Out of range of the collection?
+    def out_of_range?
+      current_page > total_pages
     end
   end
 end

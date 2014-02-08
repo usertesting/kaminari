@@ -15,7 +15,7 @@ module Kaminari
     # * <tt>:remote</tt> - Ajax? (false by default)
     # * <tt>:ANY_OTHER_VALUES</tt> - Any other hash key & values would be directly passed into each tag as :locals value.
     def paginate(scope, options = {}, &block)
-      paginator = Kaminari::Helpers::Paginator.new self, options.reverse_merge(:current_page => scope.current_page, :total_pages => scope.total_pages, :per_page => scope.limit_value, :param_name => Kaminari.config.param_name, :remote => false)
+      paginator = Kaminari::Helpers::Paginator.new self, options.reverse_merge(:current_page => scope.current_page, :total_pages => scope.total_pages, :per_page => scope.limit_value, :remote => false)
       paginator.to_s
     end
 
@@ -39,7 +39,7 @@ module Kaminari
     def link_to_previous_page(scope, name, options = {}, &block)
       params = options.delete(:params) || {}
       param_name = options.delete(:param_name) || Kaminari.config.param_name
-      link_to_unless scope.first_page?, name, params.merge(param_name => (scope.current_page - 1)), options.reverse_merge(:rel => 'previous') do
+      link_to_unless scope.first_page?, name, params.merge(param_name => scope.prev_page), options.reverse_merge(:rel => 'previous') do
         block.call if block
       end
     end
@@ -64,7 +64,7 @@ module Kaminari
     def link_to_next_page(scope, name, options = {}, &block)
       params = options.delete(:params) || {}
       param_name = options.delete(:param_name) || Kaminari.config.param_name
-      link_to_unless scope.last_page?, name, params.merge(param_name => (scope.current_page + 1)), options.reverse_merge(:rel => 'next') do
+      link_to_unless scope.last_page?, name, params.merge(param_name => scope.next_page), options.reverse_merge(:rel => 'next') do
         block.call if block
       end
     end
@@ -88,7 +88,7 @@ module Kaminari
     def page_entries_info(collection, options = {})
       entry_name = if options[:entry_name]
         options[:entry_name]
-      elsif collection.empty? || collection.is_a?(PaginatableArray)
+      elsif collection.is_a?(::Kaminari::PaginatableArray)
         'entry'
       else
         if collection.respond_to? :model  # DataMapper
@@ -131,21 +131,10 @@ module Kaminari
       param_name = options.delete(:param_name) || Kaminari.config.param_name
 
       output = ""
-
-      if !scope.first_page? && !scope.last_page?
-        # If not first and not last, then output both links.
-        output << '<link rel="next" href="' + url_for(params.merge(param_name => (scope.current_page + 1))) + '"/>'
-        output << '<link rel="prev" href="' + url_for(params.merge(param_name => (scope.current_page - 1))) + '"/>'
-      elsif scope.first_page?
-        # If first page, add next link unless last page.
-        output << '<link rel="next" href="' + url_for(params.merge(param_name => (scope.current_page + 1))) + '"/>' unless scope.last_page?
-      else
-        # If last page, add prev link unless first page.
-        output << '<link rel="prev" href="' + url_for(params.merge(param_name => (scope.current_page - 1))) + '"/>' unless scope.first_page?
-      end
+      output << '<link rel="next" href="' + url_for(params.merge(param_name => scope.next_page, :only_path => true)) + '"/>' if scope.next_page
+      output << '<link rel="prev" href="' + url_for(params.merge(param_name => scope.prev_page, :only_path => true)) + '"/>' if scope.prev_page
 
       output.html_safe
     end
-
   end
 end

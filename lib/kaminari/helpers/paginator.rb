@@ -12,6 +12,10 @@ module Kaminari
       include ::ActionView::Context
 
       def initialize(template, options) #:nodoc:
+        #FIXME for compatibility. remove num_pages at some time in the future
+        options[:total_pages] ||= options[:num_pages]
+        options[:num_pages] ||= options[:total_pages]
+
         @window_options = {}.tap do |h|
           h[:window] = options.delete(:window) || options.delete(:inner_window) || Kaminari.config.window
           outer_window = options.delete(:outer_window) || Kaminari.config.outer_window
@@ -22,9 +26,9 @@ module Kaminari
         end
         @template, @options = template, options
         @theme = @options[:theme] ? "#{@options[:theme]}/" : ''
-        @options[:current_page] = PageProxy.new @window_options.merge(@options), @options[:current_page], nil
-        #FIXME for compatibility. remove num_pages at some time in the future
-        @options[:total_pages] ||= @options[:num_pages]
+        @window_options.merge! @options
+        @window_options[:current_page] = @options[:current_page] = PageProxy.new(@window_options, @options[:current_page], nil)
+
         @last = nil
         # initialize the output_buffer for Context
         @output_buffer = ActionView::OutputBuffer.new
@@ -45,8 +49,8 @@ module Kaminari
       def each_relevant_page
         return to_enum(:each_relevant_page) unless block_given?
 
-        relevant_pages(@window_options.merge(@options)).each do |i|
-          yield PageProxy.new(@window_options.merge(@options), i, @last)
+        relevant_pages(@window_options).each do |i|
+          yield PageProxy.new(@window_options, i, @last)
         end
       end
       alias each_page each_relevant_page
@@ -74,22 +78,32 @@ module Kaminari
 
       def to_s #:nodoc:
         subscriber = ActionView::LogSubscriber.log_subscribers.detect {|ls| ls.is_a? ActionView::LogSubscriber}
-        return super @window_options.merge(@options).merge :paginator => self unless subscriber
 
-        # dirty hack to suppress logging render_partial
-        class << subscriber
-          alias_method :render_partial_with_logging, :render_partial
-          # do nothing
-          def render_partial(event); end
+        # There is a logging subscriber
+        # and we don't want it to log render_partial
+        # It is threadsafe, but might not repress logging
+        # consistently in a high-load environment
+        if subscriber
+          unless defined? subscriber.render_partial_with_logging
+            class << subscriber
+              alias_method :render_partial_with_logging, :render_partial
+              attr_accessor :render_without_logging
+              # ugly hack to make a renderer where
+              # we can turn logging on or off
+              def render_partial(event)
+                render_partial_with_logging(event) unless render_without_logging
+              end
+            end
+          end
+
+          subscriber.render_without_logging = true
+          ret = super @window_options.merge :paginator => self
+          subscriber.render_without_logging = false
+
+          ret
+        else
+          super @window_options.merge :paginator => self
         end
-
-        ret = super @window_options.merge(@options).merge :paginator => self
-
-        class << subscriber
-          alias_method :render_partial, :render_partial_with_logging
-          undef :render_partial_with_logging
-        end
-        ret
       end
 
       # Wraps a "page number" and provides some utility methods

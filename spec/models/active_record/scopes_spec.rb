@@ -2,6 +2,25 @@ require 'spec_helper'
 
 if defined? ActiveRecord
 
+  describe Kaminari::ActiveRecordModelExtension do
+    before do
+      Kaminari.configure do |config|
+        config.page_method_name = :per_page_kaminari
+      end
+      class Comment < ActiveRecord::Base; end
+    end
+
+    subject { Comment }
+    it { should respond_to(:per_page_kaminari) }
+    it { should_not respond_to(:page) }
+
+    after do
+      Kaminari.configure do |config|
+        config.page_method_name = :page
+      end
+    end
+  end
+
   shared_examples_for 'the first page' do
     it { should have(25).users }
     its('first.name') { should == 'user001' }
@@ -15,9 +34,10 @@ if defined? ActiveRecord
     before do
       1.upto(100) {|i| User.create! :name => "user#{'%03d' % i}", :age => (i / 10)}
       1.upto(100) {|i| GemDefinedModel.create! :name => "user#{'%03d' % i}", :age => (i / 10)}
+      1.upto(100) {|i| Device.create! :name => "user#{'%03d' % i}", :age => (i / 10)}
     end
 
-    [User, Admin, GemDefinedModel].each do |model_class|
+    [User, Admin, GemDefinedModel, Device].each do |model_class|
       context "for #{model_class}" do
         describe '#page' do
           context 'page 1' do
@@ -58,6 +78,11 @@ if defined? ActiveRecord
             it { should have(5).users }
             its('first.name') { should == 'user001' }
           end
+
+          context "page 1 per nil (using default)" do
+            subject { model_class.page(1).per(nil) }
+            it { should have(model_class.default_per_page).users }
+          end
         end
 
         describe '#padding' do
@@ -65,6 +90,12 @@ if defined? ActiveRecord
             subject { model_class.page(1).per(5).padding(1) }
             it { should have(5).users }
             its('first.name') { should == 'user002' }
+          end
+
+          context 'page 19 per 5 padding 5' do
+            subject { model_class.page(19).per(5).padding(5) }
+            its(:current_page) { should == 19 }
+            its(:total_pages) { should == 19 }
           end
         end
 
@@ -98,8 +129,32 @@ if defined? ActiveRecord
             subject { model_class.page(5).per('aho') }
             its(:total_pages) { should == 4 }
           end
-        end
 
+          context 'with max_pages < total pages count from database' do
+            before { model_class.max_pages_per 3 }
+            subject { model_class.page }
+            its(:total_pages) { should == 3 }
+            after { model_class.max_pages_per nil }
+          end
+
+          context 'with max_pages > total pages count from database' do
+            before { model_class.max_pages_per 11 }
+            subject { model_class.page }
+            its(:total_pages) { should == 4 }
+            after { model_class.max_pages_per nil }
+          end
+
+          context 'with max_pages is nil' do
+            before { model_class.max_pages_per nil }
+            subject { model_class.page }
+            its(:total_pages) { should == 4 }
+          end
+
+          context "with per(nil) using default" do
+            subject { model_class.page.per(nil) }
+            its(:total_pages) { should == 4 }
+          end
+        end
 
         describe '#current_page' do
           context 'page 1' do
@@ -110,6 +165,30 @@ if defined? ActiveRecord
           context 'page 2' do
             subject { model_class.page(2).per 3 }
             its(:current_page) { should == 2 }
+          end
+        end
+
+        describe '#next_page' do
+          context 'page 1' do
+            subject { model_class.page }
+            its(:next_page) { should == 2 }
+          end
+
+          context 'page 5' do
+            subject { model_class.page(5) }
+            its(:next_page) { should be_nil }
+          end
+        end
+
+        describe '#prev_page' do
+          context 'page 1' do
+            subject { model_class.page }
+            its(:prev_page) { should be_nil }
+          end
+
+          context 'page 5' do
+            subject { model_class.page(5) }
+            its(:prev_page) { should == 4 }
           end
         end
 
@@ -134,6 +213,23 @@ if defined? ActiveRecord
           context 'not on last page' do
             subject { model_class.page(1).per(10) }
             its(:last_page?) { should == false }
+          end
+        end
+
+        describe '#out_of_range?' do
+          context 'on last page' do
+            subject { model_class.page(10).per(10) }
+            its(:out_of_range?) { should == false }
+          end
+
+          context 'within range' do
+            subject { model_class.page(1).per(10) }
+            its(:out_of_range?) { should == false }
+          end
+
+          context 'out of range' do
+            subject { model_class.page(11).per(10) }
+            its(:out_of_range?) { should == true }
           end
         end
 

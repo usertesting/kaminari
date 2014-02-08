@@ -86,6 +86,11 @@ describe Kaminari::PaginatableArray do
       subject { array.page(5).per('aho') }
       its(:total_pages) { should == 4 }
     end
+
+    context 'per 25, padding 25' do
+      subject { array.page(1).padding(25) }
+      its(:total_pages) { should == 3 }
+    end
   end
 
   describe '#current_page' do
@@ -97,6 +102,30 @@ describe Kaminari::PaginatableArray do
     context 'page 2' do
       subject { array.page(2).per 3 }
       its(:current_page) { should == 2 }
+    end
+  end
+
+  describe '#next_page' do
+    context 'page 1' do
+      subject { array.page }
+      its(:next_page) { should == 2 }
+    end
+
+    context 'page 5' do
+      subject { array.page 5 }
+      its(:next_page) { should be_nil }
+    end
+  end
+
+  describe '#prev_page' do
+    context 'page 1' do
+      subject { array.page }
+      its(:prev_page) { should be_nil }
+    end
+
+    context 'page 5' do
+      subject { array.page 5 }
+      its(:prev_page) { should == 4 }
     end
   end
 
